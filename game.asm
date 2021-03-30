@@ -35,6 +35,8 @@
 #                o Tracks the top 3 highscores of all-time
 #                o Clear UI to indicate new highscores and display highscores after each game
 #                o You can skip viewing the highscore info. screens by pressing 'a'
+#	  2. Special Feature | Konami Cheat Code (kinda)
+#	         o Pressing the following sequence: W -> S -> A -> D -> B, changes your spaceship color
 #
 # Link to video demonstration for final submission:
 # - (insert YouTube / MyMedia / other URL here). Make sure we can view it!
@@ -100,7 +102,7 @@
 .eqv	GAMEOVER_DELAY	4000
 .eqv	SHOW_HS_DELAY	8000
 .eqv	WRITING_DELAY	125
-.eqv	ITEM_PICKUP_DELAY	40
+.eqv	ITEM_PICKUP_DELAY	50
 
 .eqv	LEVEL1	950
 .eqv	LEVEL2	2650
@@ -126,6 +128,7 @@
 .eqv	SS_COLOR1	0x00d0def5
 .eqv	SS_COLOR2	0x00456487
 .eqv	SS_COLOR3	0x00d6503e
+.eqv	SS_KONAMI	0x004794b5
 
 .eqv	ASTEROID_COLOR2	0x007c818a
 .eqv	ASTEROID_COLOR1 0x0050555e
@@ -152,10 +155,13 @@ asteroids:	.word	0, 32, 0, 0, 34, 0, 0, 33, 0 # asteroid info: (read in groups o
 health_item1:	.word	0:3
 health_item2:	.word	0:3
 point_item:	.word	0:3
+ss_color:	.word	0:2
 
 hs_filename:	.asciiz	"C:/Users/KiNg/Desktop/B58/Final Project/highscores.txt"
 hs_content:	.byte	48:12 # initialize hs array with all 0s (ASCII 48 <-> '0')
 temp:	.word	0
+
+konami_cc:	.word	0:5
 
 start_time:	.word	0
 
@@ -173,6 +179,7 @@ print_comma:	.asciiz ", "
 print_period:	.asciiz	"."
 print_zero:	.asciiz "0"
 print_time:	.asciiz	"s\n"
+print_konami:	.asciiz	"KONAMI CC SUCCESS\n"
 
 .text
 .globl config
@@ -303,6 +310,21 @@ game_init:
 	sw $t1, 4($t0)
 	sw $t1, 8($t0)
 
+	# clearing konami_cc stack
+	la $t0, konami_cc
+	sw $zero, 0($t0)
+	sw $zero, 4($t0)
+	sw $zero, 8($t0)
+	sw $zero, 12($t0)
+	sw $zero, 16($t0)
+
+	# initializing spaceship colors
+	la $t0, ss_color
+	li $t1, SS_COLOR1
+	sw $t1, 0($t0)
+	li $t1, SS_COLOR2
+	sw $t1, 4($t0)
+
 	# drawing the health bar
 	jal draw_health_bar
 	
@@ -318,11 +340,6 @@ game_init:
 	sw $zero, 0($t0)
 	sw $zero, 4($t0)
 	sw $zero, 8($t0)
-	
-	# drawing the spaceship
-	la $a0, SS_COLOR1
-	la $a1, SS_COLOR2
-	jal draw_ss
 	
 	# generating asteroids
 	la $t0, asteroids
@@ -550,8 +567,9 @@ draw_ss_wrapper:
 	add $t3, $t3, $t2
 	sw $t3, 4($t0) # updating the y position of the spaceship
 
-	la $a0, SS_COLOR1
-	la $a1, SS_COLOR2
+	la $t0, ss_color
+	lw $a0, 0($t0)
+	lw $a1, 4($t0)
 	jal draw_ss # drawing the spaceship's new position
 	
 	j check_item_collected_wrapper
@@ -656,7 +674,39 @@ check_keypress_wrapper:
 # any miscellaneous game loop checks go here 
 end_of_game_loop:
 	jal clear_display_buffer
+	jal check_konami_cc
 	j game_loop
+
+check_konami_cc:
+	la $t0, konami_cc
+	lw $t1, 0($t0)
+	bne $t1, 98, quick_return
+	lw $t1, 4($t0)
+	bne $t1, 100, quick_return
+	lw $t1, 8($t0)
+	bne $t1, 97, quick_return
+	lw $t1, 12($t0)
+	bne $t1, 115, quick_return
+	lw $t1, 16($t0)
+	bne $t1, 119, quick_return
+	
+	li $v0, 4
+	la $a0, print_konami
+	syscall
+	
+	sw $zero, 0($t0)
+	sw $zero, 4($t0)
+	sw $zero, 8($t0)
+	sw $zero, 12($t0)
+	sw $zero, 16($t0)
+	
+	la $t0, ss_color
+	li $t1, SS_KONAMI
+	sw $t1, 0($t0)
+	li $t1, WHITE
+	sw $t1, 4($t0)
+	
+	jr $ra
 
 # resolves pick-up items glitch
 clear_display_buffer:
@@ -789,9 +839,10 @@ update_score_board:
 	li $a2, LIGHT_BLUE
 	jal write_current_score # writing the score in a light blue to indicate point gain
 	
-	la $a0, BLUE
-	la $a1, SS_COLOR2
-	jal draw_ss # drawing the spaceship in blue to indicate point gain
+	la $t0, ss_color
+	la $a0, DARK_BLUE
+	lw $a1, 4($t0)
+	jal draw_ss # drawing spaceship in dark blue to indicate item was collected
 	
 	li $v0, 32
 	li $a0, ITEM_PICKUP_DELAY
@@ -913,8 +964,9 @@ increase_health_bar:
 
 	jal draw_health_bar
 	
+	la $t0, ss_color
 	la $a0, GREEN
-	la $a1, SS_COLOR2
+	lw $a1, 4($t0)
 	jal draw_ss # drawing the spaceship in green to indicate health gain
 	
 	li $v0, 32
@@ -1104,8 +1156,9 @@ generate_item:
 																					
 # this function is called when a spaceship-asteroid collision is detected, it updates the points, health and spaceship status												
 ss_collided:
+	la $t0, ss_color
 	la $a0, SS_COLOR3
-	la $a1, SS_COLOR2
+	lw $a1, 4($t0)
 	jal draw_ss # drawing the spaceship in red to indicate a collision
 	
 	# writing the new score in the bottom write corner of the display
@@ -1127,7 +1180,7 @@ ss_collided:
 	jal draw_health_bar  # drawing the new health bar (it has three stages: green, yellow, red)
 	
 	li $v0, 32
-	li $a0, 30
+	li $a0, ITEM_PICKUP_DELAY
 	syscall # slightly delaying the game to further indicate a collision has occured
 	
 	j check_keypress_wrapper
@@ -1383,7 +1436,15 @@ check_keypress:
 
 # detects which key was pressed during gameplay
 detected_keypress:
-	lw $t2, 4($t9) # storing the key that got pressed
+	lw $t2, 4($t9) # storing the key that got pressed, preserve it
+	
+	addi $sp, $sp, -4
+ 	sw $ra, 0($sp) # push $ra onto stack
+ 	
+ 	jal add_to_konami
+ 	
+ 	lw $ra, 0($sp) # pop $ra off stack
+ 	addi $sp, $sp, 4
 	
 	# checking if w,a,s,d,p, or e was pressed
 	beq $t2, 0x77, keypress_w
@@ -1392,6 +1453,22 @@ detected_keypress:
 	beq $t2, 0x64, keypress_d
 	beq $t2, 0x70, game_init
 	beq $t2, 0x65, exit    
+	
+	jr $ra
+
+# Adds to the konami_cc stack
+add_to_konami:
+	la $t3, konami_cc
+	
+	lw $t4, 12($t3)
+	sw $t4, 16($t3) # konami_cc[4] = konami_cc[3]
+	lw $t4, 8($t3)
+	sw $t4, 12($t3) # konami_cc[3] = konami_cc[2]
+	lw $t4, 4($t3)
+	sw $t4, 8($t3) # konami_cc[2] = konami_cc[1]
+	lw $t4, 0($t3)
+	sw $t4, 4($t3) # konami_cc[1] = konami_cc[0]
+	sw $t2, 0($t3) # konami_cc[0] = key that just got pressed
 	
 	jr $ra
 
