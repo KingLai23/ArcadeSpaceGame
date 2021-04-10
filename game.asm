@@ -6,10 +6,10 @@
 # Student: King Lai, 1006030723, laiking2
 #
 # Bitmap Display Configuration:
-# - Unit width in pixels: 8 (update this as needed)
-# - Unit height in pixels: 8 (update this as needed)
-# - Display width in pixels: 256 (update this as needed)
-# - Display height in pixels: 256 (update this as needed)
+# - Unit width in pixels: 8
+# - Unit height in pixels: 8
+# - Display width in pixels: 256
+# - Display height in pixels: 256
 # - Base Address for Display: 0x10008000 ($gp)
 #
 # Which milestones have been reached in this submission?
@@ -21,9 +21,9 @@
 #     1. Scoring System -> you gain points by staying alive (9 points per game loop)
 #     2. Automatic Difficulty Increase
 #            o Level 0: 1 asteroid, 40ms refresh rate
-#            o Level 1: 2 asteroids, 34ms refresh rate
-#            o Level 2: 3 asteroids, 28ms refresh rate
-#            o Level 3: 3 asteroids, 14m refresh rate (pretty much impossible to survive)
+#            o Level 1: 2 asteroids, 36ms refresh rate
+#            o Level 2: 3 asteroids, 32ms refresh rate
+#            o Level 3: 3 asteroids, 24m refresh rate (pretty much impossible to survive)
 #     3. Pick-up Items
 #            o Red Heart: +12 health
 #            o Yellow Pellet: +4 Health 
@@ -39,10 +39,11 @@
 #	         o Pressing the following sequence: W -> S -> A -> D -> B, changes your spaceship color
 #
 # Link to video demonstration for final submission:
-# - (insert YouTube / MyMedia / other URL here). Make sure we can view it!
+# - YouTube: https://youtu.be/1GL9gkl_LaY
 #
 # Are you OK with us sharing the video with people outside course staff?
 # - YES, and please share this project github link as well!
+# - https://github.com/KingLai23/ArcadeSpaceGame 
 #
 # Any additional information that the TA needs to know:
 # - IMPORTANT
@@ -66,7 +67,7 @@
 #            3. The bottom right number is your score.
 #      o Yellow flying items give you +4 health.
 #      o Red flying items give you +12 health.
-#      o Blue flying items give you additional points, ranging from 100 to 249.
+#      o Blue flying items give you additional points, ranging from 150 to 400.
 #      o At anytime during the gameplay you can press 'p' to restart, or 'e' to exit.
 #      o The gameover screen lasts 4 seconds.
 #      o The new highscore screen lasts about 6 seconds, or you could skip by pressing 'a'.
@@ -87,37 +88,44 @@
 
 .eqv	START_HEALTH	24
 
-.eqv	HEALTH_GEN_RATE	60 # 1.67% chance of spawning health regen 
+.eqv	HEALTH_GEN_RATE	66 # 1.5% chance of spawning health regen 
 .eqv	POINT_GEN_RATE	50 # 2.00% chance of spawning bonus point item
 
+# Score Related
 .eqv	SCORE_INCREASE	3
 .eqv	SCORE_DECREASE	29
 .eqv	POINT_GAIN_BASE	150
 .eqv	POINT_GAIN_ADDITIONAL	251
 
+# Spaceship Starting Position
 .eqv	SS_START_X 	6
 .eqv	SS_START_Y	15
 
+# Delays
 .eqv	DEATH_DELAY	800
 .eqv	GAMEOVER_DELAY	4000
 .eqv	SHOW_HS_DELAY	8000
 .eqv	WRITING_DELAY	125
-.eqv	ITEM_PICKUP_DELAY	50
+.eqv	ITEM_PICKUP_DELAY	70
 
+# Level-up Requirements
 .eqv	LEVEL1	950
 .eqv	LEVEL2	2650
-.eqv	LEVEL3	5250
+.eqv	LEVEL3	5000
 
+# Asteroid Speeds
 .eqv	SPEED0	40
-.eqv	SPEED1	34
-.eqv	SPEED2	28
-.eqv	SPEED3	14
+.eqv	SPEED1	36
+.eqv	SPEED2	32
+.eqv	SPEED3	16
 
+# Health Item Colors
 .eqv	HEALTH_ITEM1_COLOR1	0x00a87932
 .eqv	HEALTH_ITEM1_COLOR2	0x00d1a336
 .eqv	HEALTH_ITEM2_COLOR1	0x00802e22
 .eqv	HEALTH_ITEM2_COLOR2	0x00c25236
 
+# Health Bar Colors
 .eqv	HEALTH_BAR_COLOR1	0x00256337 # DARKER
 .eqv	HEALTH_BAR_COLOR2	0x00449c5e # LIGHTER
 .eqv	HEALTH_BAR_COLOR3	0x00a87932
@@ -125,14 +133,17 @@
 .eqv	HEALTH_BAR_COLOR5	0x00802e22
 .eqv	HEALTH_BAR_COLOR6	0x00c25236
 
+# Spaceship Colors
 .eqv	SS_COLOR1	0x00d0def5
 .eqv	SS_COLOR2	0x00456487
 .eqv	SS_COLOR3	0x00d6503e
 .eqv	SS_KONAMI	0x004794b5
 
+# Asteroid Colors
 .eqv	ASTEROID_COLOR2	0x007c818a
 .eqv	ASTEROID_COLOR1 0x0050555e
 
+# Generic Colors
 .eqv	BLACK		0x00000000
 .eqv	WHITE		0x00ffffff
 .eqv	DARK_GREY	0x00323232
@@ -144,6 +155,7 @@
 .eqv	DARK_BLUE	0x003e5982
 .eqv	GREEN	0x00449c5e
 
+# Debug Configurations
 .eqv	ENABLE_COLLISIONS	1 # disable (0) and enable (1) collisions -> mainly for debugging
 .eqv	CLEAR_HIGHSCORES	0 # clear highscores file -> set to non-zero number to clear
 
@@ -161,7 +173,7 @@ hs_filename:	.asciiz	"C:/Users/KiNg/Desktop/B58/Final Project/highscores.txt"
 hs_content:	.byte	48:12 # initialize hs array with all 0s (ASCII 48 <-> '0')
 temp:	.word	0
 
-konami_cc:	.word	0:5
+konami_cc:	.word	0:5 # the 5 most recent key presses are stored here to check for the cheat code
 
 start_time:	.word	0
 
@@ -398,6 +410,7 @@ wipe_screen_wrapper:
 	li $a1, BLACK
 	j wipe_screen
 
+# Completely wipes the screen by coloring it black
 wipe_screen:
 	bgt $a0, 4092, quick_return
 	add $t0, $a0, $s0
@@ -427,6 +440,7 @@ wipe_screen:
 # the tasks before jumping to the next task wrapper.
 #  
 
+# Start of the game loop
 game_loop:
 	jal update_difficulty # updates the difficulty if needed
 	
@@ -589,32 +603,38 @@ check_item_collected_wrapper:
 	
 	j gen_health_wrapper
 	
-# generates health items	
+# generates health items if there is a spot available	
 gen_health_wrapper:
+	# generating a random number between 0 and HEALTH_GEN_RATE and seeing if its equal to 0 (slow spawn rate)
 	li $v0, 42
 	li $a0, 0
 	li $a1, HEALTH_GEN_RATE
 	syscall
 	
-	bne $a0, $zero, gen_point_item_wrapper
+	bne $a0, $zero, gen_point_item_wrapper 
 	
+	# Checking if health_item1 is available to store the new health item
 	la $t0, health_item1
 	lw $t0, 0($t0)
 	beq $t0, -1, gen_health_item1
 	
+	# Checking if health_item2 is available to store the new health item
 	la $t0, health_item2
 	lw $t0, 0($t0)
 	beq $t0, -1, gen_health_item2
 
+	# No available spots to store the new health item, so the generation is cancelled
 	j gen_point_item_wrapper
 
 # generates point bonus item
 gen_point_item_wrapper:
+	# Checking if there is a spot available to store the new point bonus item
 	la $t0, point_item
 	lw $t1, 0($t0)
 
 	bne $t1, -1, check_collision_wrapper
 
+	# generating a random number between 0 and POINT_GEN_RATE and seeing if its equal to 0 (slow spawn rate)
 	li $v0, 42
 	li $a0, 0
 	li $a1, POINT_GEN_RATE
@@ -626,12 +646,14 @@ gen_point_item_wrapper:
 	la $a0, print_item
 	syscall 
 	
+	# Generating a random y-coord for the new point bonus item
 	li $v0, 42
 	li $a0, 0
 	li $a1, 13
 	syscall
 	addi $a0, $a0, 8
 	
+	# Storign the newly generating point bonus item to be drawn onto the screen
 	sw $a0, 8($t0)
 	li $a0, 30
 	sw $a0, 4($t0)
@@ -677,29 +699,32 @@ end_of_game_loop:
 	jal check_konami_cc
 	j game_loop
 
+# Checks if the user entered the correct cheat code
 check_konami_cc:
-	la $t0, konami_cc
+	la $t0, konami_cc # storing the address of the konami stack
 	lw $t1, 0($t0)
-	bne $t1, 98, quick_return
+	bne $t1, 98, quick_return # checking if the first item of the stack is B
 	lw $t1, 4($t0)
-	bne $t1, 100, quick_return
+	bne $t1, 100, quick_return # checking if the second item of the stack is D
 	lw $t1, 8($t0)
-	bne $t1, 97, quick_return
+	bne $t1, 97, quick_return # checking if the third item of the stack is A
 	lw $t1, 12($t0)
-	bne $t1, 115, quick_return
+	bne $t1, 115, quick_return # checking if the fourth item of the stack is S
 	lw $t1, 16($t0)
-	bne $t1, 119, quick_return
+	bne $t1, 119, quick_return # checking if the fifth item of the stack is W
 	
 	li $v0, 4
 	la $a0, print_konami
 	syscall
 	
+	# Resetting the konami stack
 	sw $zero, 0($t0)
 	sw $zero, 4($t0)
 	sw $zero, 8($t0)
 	sw $zero, 12($t0)
 	sw $zero, 16($t0)
 	
+	# Updating the color of the spaceship to the special color
 	la $t0, ss_color
 	li $t1, SS_KONAMI
 	sw $t1, 0($t0)
@@ -850,6 +875,7 @@ update_score_board:
 	
 	j gen_health_wrapper
 
+# Checks if the point bonus item was collected
 check_point_item_collected:	
 	lw $t0, 0($a0)
 	beq $t0, -1, quick_return
@@ -872,6 +898,7 @@ check_point_item_collected:
 	add $t7, $t7, $t2
 	sll $t7, $t7, 2 # t6 contains spaceship offset
 	
+	# Checking if the significant coordinates overlap between the spaceship and item
 	beq $t6, $t7, collected_point_item
 	addi $t6, $t6, 4
 	beq $t6, $t7, collected_point_item
@@ -922,18 +949,21 @@ check_point_item_collected:
 	
 	jr $ra
 
+# This is called if a bonus point item was collected
 collected_point_item:
 	sll $t6, $t1, 5
 	add $t6, $t6, $t0
 	sll $t6, $t6, 2 # t6 contains item offset
 	add $t6, $t6, $s0 # t6 contains item offset + base address
 	
+	# Removing the bonus point item from the screen
 	li $t4, BLACK
 	sw $t4, 0($t6)
 	sw $t4, 4($t6)
 	sw $t4, 128($t6)
 	sw $t4, 132($t6)
 	
+	# Generating a random point increase
 	li $v0, 42
 	li $a0, 0
 	li $a1, POINT_GAIN_ADDITIONAL
@@ -942,7 +972,8 @@ collected_point_item:
 	
 	la $a0, point_item
 	j clear_item
-			
+	
+# Increasing the player health	
 increase_health:
 	la $t0, game_info
 	lw $t1, 4($t0)
@@ -955,7 +986,8 @@ increase_health:
 	sw $t1, 4($t0)
 
 	j increase_health_bar
-	
+
+# Increasing the health bar
 increase_health_bar:
 	subi $t1, $t1, 1
 	sll $t1, $t1, 2
@@ -975,6 +1007,7 @@ increase_health_bar:
 	
 	j gen_health_wrapper
 	
+# Checking if any of the health bonus items were collected
 check_health_item_selector:
 	lw $t0, 0($a0)
 	beq $t0, -1, quick_return
@@ -988,6 +1021,7 @@ check_health_item_selector:
 	beq $t0, 1, health_item1_collision
 	j health_item2_collision
 
+# Checking for a collision with the smaller health item (the yellow one)
 health_item1_collision:
 	blt $t1, $t4, quick_return # health item is behind spaceship
 
@@ -1022,7 +1056,8 @@ health_item1_collision:
 	beq $t6, $t7, item_collected1
 
 	jr $ra
-	
+
+# Checking for a collision with the larger health item (the red one)	
 health_item2_collision:	
 	blt $t1, $t4, quick_return # health item is behind spaceship
 
@@ -1065,7 +1100,8 @@ health_item2_collision:
 	beq $t6, $t7, item_collected2
 
 	jr $ra
-	
+
+# Removing the smaller health item from the screen if collected
 item_collected1:
 	sll $t6, $t2, 5
 	add $t6, $t6, $t1
@@ -1082,6 +1118,7 @@ item_collected1:
 	
 	j clear_item
 
+# Removing the larger health itme from the screen if collected
 item_collected2:
 	sll $t5, $t2, 5
 	add $t5, $t5, $t1
@@ -1102,6 +1139,7 @@ item_collected2:
 	
 	j clear_item
 
+# Generating the first health item
 gen_health_item1:
 	jal generate_item
 	
@@ -1117,6 +1155,7 @@ gen_health_item1:
 	
 	j gen_point_item_wrapper
 
+# Generating the second health item
 gen_health_item2:
 	jal generate_item
 
@@ -1644,6 +1683,7 @@ print_total_time_elapsed:
 	
 	jr $ra
 
+# The bottom two labels print the time elapsed in the console
 time_with_two_zeros:
 	li $v0, 4
 	la $a0, print_zero
@@ -2434,6 +2474,7 @@ setYellowLight:
 	li $t1, HEALTH_BAR_COLOR4
 	jr $ra
 
+# Drawing the smaller health item (yellow one)
 draw_health_item1:
 	lw $t0, 0($a0) 
 	beq $t0, -1, quick_return
@@ -2466,6 +2507,7 @@ draw_health_item1:
 	
 	jr $ra
 	
+# Drawing the larger health item (red one)
 draw_health_item2:
 	lw $t0, 0($a0) 
 	beq $t0, -1, quick_return
@@ -2508,6 +2550,7 @@ draw_health_item2:
 	
 	jr $ra
 
+# Drawing the bonus point item
 draw_point_item:
 	lw $t0, 0($a0)
 	beq $t0, -1, quick_return
